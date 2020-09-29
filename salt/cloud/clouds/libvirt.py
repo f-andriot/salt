@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Libvirt Cloud Module
 ====================
@@ -97,7 +96,6 @@ Tested on:
 # TODO: by using metadata tags in the libvirt XML we could make provider only
 #       manage domains that we actually created
 
-# Import python libs
 from __future__ import absolute_import, print_function, unicode_literals
 
 import logging
@@ -107,7 +105,6 @@ import re
 import uuid
 from xml.etree import ElementTree
 
-# Import salt libs
 import salt.config as config
 import salt.utils.cloud
 from salt.exceptions import (
@@ -1013,6 +1010,7 @@ def generate_new_name(orig_name, disk_name):
         return "{0}-{1}.{2}".format(name, uuid.uuid1(), ext)
     else:
         return "{0}.{1}".format(disk_name, ext)
+
 
 def get_domain_volumes(conn, domain):
     volumes = []
