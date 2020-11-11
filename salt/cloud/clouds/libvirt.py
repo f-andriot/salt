@@ -96,8 +96,6 @@ Tested on:
 # TODO: by using metadata tags in the libvirt XML we could make provider only
 #       manage domains that we actually created
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import logging
 import os
 import sys
@@ -113,9 +111,6 @@ from salt.exceptions import (
     SaltCloudNotFound,
     SaltCloudSystemExit,
 )
-
-# Import 3rd-party libs
-from salt.ext import six
 
 try:
     import libvirt  # pylint: disable=import-error
@@ -199,8 +194,8 @@ def __get_conn(url):
         conn = libvirt.open(url)
     except Exception:  # pylint: disable=broad-except
         raise SaltCloudExecutionFailure(
-            "Sorry, {0} failed to open a connection to the hypervisor "
-            "software at {1}".format(__grains__["fqdn"], url)
+            "Sorry, {} failed to open a connection to the hypervisor "
+            "software at {}".format(__grains__["fqdn"], url)
         )
     return conn
 
@@ -226,7 +221,7 @@ def list_nodes(call=None):
 
     ret = {}
     providers_to_check = [
-        _f for _f in [cfg.get("libvirt") for cfg in six.itervalues(providers)] if _f
+        _f for _f in [cfg.get("libvirt") for cfg in providers.values()] if _f
     ]
     for provider in providers_to_check:
         conn = __get_conn(provider["url"])
@@ -297,7 +292,7 @@ def get_domain_ips(domain, ip_source):
         log.info("Exception polling address %s", error)
         return ips
 
-    for (name, val) in six.iteritems(addresses):
+    for (name, val) in addresses.items():
         if val["addrs"]:
             for addr in val["addrs"]:
                 tp = to_ip_addr_type(addr["type"])
@@ -327,7 +322,7 @@ def create(vm_):
 
     if clone_strategy not in ("quick", "full"):
         raise SaltCloudSystemExit(
-            "'clone_strategy' must be one of quick or full. Got '{0}'".format(
+            "'clone_strategy' must be one of quick or full. Got '{}'".format(
                 clone_strategy
             )
         )
@@ -336,7 +331,7 @@ def create(vm_):
 
     if ip_source not in ("ip-learning", "qemu-agent"):
         raise SaltCloudSystemExit(
-            "'ip_source' must be one of qemu-agent or ip-learning. Got '{0}'".format(
+            "'ip_source' must be one of qemu-agent or ip-learning. Got '{}'".format(
                 ip_source
             )
         )
@@ -371,7 +366,7 @@ def create(vm_):
     __utils__["cloud.fire_event"](
         "event",
         "starting create",
-        "salt/cloud/{0}/creating".format(name),
+        "salt/cloud/{}/creating".format(name),
         args=__utils__["cloud.filter_event"](
             "creating", vm_, ["name", "profile", "provider", "driver"]
         ),
@@ -412,7 +407,7 @@ def create(vm_):
     )
     if key_filename is not None and not os.path.isfile(key_filename):
         raise SaltCloudConfigError(
-            "The defined key_filename '{0}' does not exist".format(key_filename)
+            "The defined key_filename '{}' does not exist".format(key_filename)
         )
     vm_["key_filename"] = key_filename
     # wait_for_instance requires private_key
@@ -441,7 +436,7 @@ def create(vm_):
             __utils__["cloud.fire_event"](
                 "event",
                 "requesting instance",
-                "salt/cloud/{0}/requesting".format(name),
+                "salt/cloud/{}/requesting".format(name),
                 args={
                     "kwargs": __utils__["cloud.filter_event"](
                         "requesting", kwargs, list(kwargs)
@@ -459,7 +454,7 @@ def create(vm_):
                 description_elem = ElementTree.Element("description")
                 domain_xml.insert(0, description_elem)
             description = domain_xml.find("./description")
-            description.text = "Cloned from {0}".format(base)
+            description.text = "Cloned from {}".format(base)
             domain_xml.remove(domain_xml.find("./uuid"))
 
             # Configure number of CPU
@@ -484,7 +479,7 @@ def create(vm_):
                     elif memory_unit.lower() == "gb":
                         memory_mb = int(float(memory_num) * 1024.0)
                     else:
-                        err_msg = "Invalid memory type specified: '{0}'".format(memory_unit)
+                        err_msg = "Invalid memory type specified: '{}'".format(memory_unit)
                         log.error(err_msg)
                         return {"Error": err_msg}
                 except (TypeError, ValueError):
@@ -580,7 +575,7 @@ def create(vm_):
                     if source_element and "path" in source_element.attrib:
                         path = source_element.attrib["path"]
                         new_path = path.replace(
-                            "/domain-{0}/".format(base), "/domain-{0}/".format(name)
+                            "/domain-{}/".format(base), "/domain-{}/".format(name)
                         )
                         log.debug("Rewriting agent socket path to %s", new_path)
                         source_element.attrib["path"] = new_path
@@ -640,7 +635,7 @@ def create(vm_):
                     disk.find("./source").attrib["file"] = new_volume.path()
                 else:
                     raise SaltCloudExecutionFailure(
-                        "Disk type '{0}' not supported".format(disk_type)
+                        "Disk type '{}' not supported".format(disk_type)
                     )
 
             # Add new disks to domain
@@ -794,7 +789,7 @@ def create(vm_):
         __utils__["cloud.fire_event"](
             "event",
             "created instance",
-            "salt/cloud/{0}/created".format(name),
+            "salt/cloud/{}/created".format(name),
             args=__utils__["cloud.filter_event"](
                 "created", vm_, ["name", "profile", "provider", "driver"]
             ),
@@ -806,7 +801,7 @@ def create(vm_):
     except Exception:  # pylint: disable=broad-except
         do_cleanup(cleanup)
         # throw the root cause after cleanup
-        six.reraise(*sys.exc_info())
+        raise sys.exc_info()
 
 
 def do_cleanup(cleanup):
@@ -884,7 +879,7 @@ def destroy(name, call=None):
 
     providers = __opts__.get("providers", {})
     providers_to_check = [
-        _f for _f in [cfg.get("libvirt") for cfg in six.itervalues(providers)] if _f
+        _f for _f in [cfg.get("libvirt") for cfg in providers.values()] if _f
     ]
     for provider in providers_to_check:
         conn = __get_conn(provider["url"])
@@ -896,15 +891,15 @@ def destroy(name, call=None):
             pass
 
     if not found:
-        return "{0} doesn't exist and can't be deleted".format(name)
+        return "{} doesn't exist and can't be deleted".format(name)
 
     if len(found) > 1:
-        return "{0} doesn't identify a unique machine leaving things".format(name)
+        return "{} doesn't identify a unique machine leaving things".format(name)
 
     __utils__["cloud.fire_event"](
         "event",
         "destroying instance",
-        "salt/cloud/{0}/destroying".format(name),
+        "salt/cloud/{}/destroying".format(name),
         args={"name": name},
         sock_dir=__opts__["sock_dir"],
         transport=__opts__["transport"],
@@ -915,7 +910,7 @@ def destroy(name, call=None):
     __utils__["cloud.fire_event"](
         "event",
         "destroyed instance",
-        "salt/cloud/{0}/destroyed".format(name),
+        "salt/cloud/{}/destroyed".format(name),
         args={"name": name},
         sock_dir=__opts__["sock_dir"],
         transport=__opts__["transport"],
@@ -957,7 +952,7 @@ def create_volume_xml(volume, disk_name):
     # TODO: generate name
     volume_xml.find("name").text = generate_new_name(volume.name(), disk_name)
     log.debug("Volume: %s", dir(volume))
-    volume_xml.find("capacity").text = six.text_type(volume.info()[1])
+    volume_xml.find("capacity").text = str(volume.info()[1])
     volume_xml.find("./target/path").text = volume.path()
     xml_string = salt.utils.stringutils.to_str(ElementTree.tostring(volume_xml))
     log.debug("Creating %s", xml_string)
@@ -983,7 +978,7 @@ def create_volume_with_backing_store_xml(volume, disk_name):
     # TODO: generate name
     volume_xml.find("name").text = generate_new_name(volume.name(), disk_name)
     log.debug("volume: %s", dir(volume))
-    volume_xml.find("capacity").text = six.text_type(volume.info()[1])
+    volume_xml.find("capacity").text = str(volume.info()[1])
     volume_xml.find("./backingStore/path").text = volume.path()
     xml_string = salt.utils.stringutils.to_str(ElementTree.tostring(volume_xml))
     log.debug("Creating %s", xml_string)
@@ -997,19 +992,19 @@ def find_pool_and_volume(conn, path):
         for v in sp.listAllVolumes():
             if v.path() == path:
                 return sp, v
-    raise SaltCloudNotFound("Could not find volume for path {0}".format(path))
+    raise SaltCloudNotFound("Could not find volume for path {}".format(path))
 
 
 def generate_new_name(orig_name, disk_name):
     if disk_name == "default" and "." not in orig_name:
-        return "{0}-{1}".format(orig_name, uuid.uuid1())
+        return "{}-{}".format(orig_name, uuid.uuid1())
 
     name, ext = orig_name.rsplit(".", 1)
 
     if disk_name == "default":
-        return "{0}-{1}.{2}".format(name, uuid.uuid1(), ext)
+        return "{}-{}.{}".format(name, uuid.uuid1(), ext)
     else:
-        return "{0}.{1}".format(disk_name, ext)
+        return "{}.{}".format(disk_name, ext)
 
 
 def get_domain_volumes(conn, domain):
